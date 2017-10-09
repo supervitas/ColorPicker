@@ -9,33 +9,38 @@ class App {
 
 		this._scene = new THREE.Scene();
 		this._camera = this._createCamera();
-		this._renderer = this._createRenderer();
+        this._renderer = this._createRenderer();
+        
 		this._pickingRenderTarget = this._createColorPickingRT();
-		this._pickingScene = new THREE.Scene();
+        this._pickingScene = new THREE.Scene();
+        this._pixelBuffer = new Uint8Array(4);
 
 		this._texture = this._loadTexture();
 
 		this._canvasContainer.appendChild(this._renderer.domElement);
 
 		this._cubes = [];
-		this._pickingObjects = [];
-		this._addCubes();
+        this._pickingObjects = [];
+        this._selectedObject  = null                	
 
 		this._mouse = new THREE.Vector2();
-		this._pixelBuffer = new Uint8Array(4);
 
 		this._render = this.render.bind(this);
+        
+        this._addListeners();
 
-		this._addListeners();
+        this._addCubes();
 		this._render();
 	}
 
 	_addListeners() {
 		window.addEventListener('mousemove', this._onMouseMove.bind(this), false);
-	}
+    }
+    
 	_onMouseMove(event) {
 		this._mouse.x = event.clientX;
-		this._mouse.y = event.clientY;
+        this._mouse.y = event.clientY;
+        
 		this.pick();
 	}
 
@@ -92,51 +97,41 @@ class App {
 		for (let i = 0; i < count; i++) {
 			const cube = new THREE.Mesh(boxGeometry, boxMaterial);
 
-			cube.position.set(negativeRandom() * Math.random() * i * 2, negativeRandom() * Math.random() * i * 2, 0);
-
-			this._cubes.push(cube);
-			this._scene.add(cube);
-
+			cube.position.set(negativeRandom() * Math.random() * i * 3, negativeRandom() * Math.random() * i * 1.5, 0);
+			
 			const pickingObject = cube.clone();
 			pickingObject.material = pickingMaterial.clone();
-			pickingObject.material.uniforms.pickingColor.value.setHex(i + 1);
+            pickingObject.material.uniforms.pickingColor.value.setHex(i + 1);
+            
+            this._cubes[i + 1] = cube;
+			this._pickingObjects[i + 1] = pickingObject;
 
-			this._pickingObjects[i] = pickingObject;
-
-
+            this._scene.add(cube);
 			this._pickingScene.add(pickingObject);
 		}
-	}
+    }  
 
 	_rotateCubes() {
-		for (let i = 0; i < this._cubes.length; i++) {
-			this._cubes[i].rotation.x += 0.01;
-			this._pickingObjects[i].rotation.x += 0.01;
-		}
+		for (let i = 1; i < this._cubes.length; i++) {
+            
+            if (this._selectedObject === this._cubes[i]) continue;            
+
+            this._cubes[i].rotation.x += 0.01;
+            this._pickingObjects[i].rotation.x += 0.01;			
+        }       
 	}
 
 	render() {
 		requestAnimationFrame(this._render);
 
-		this._renderer.autoClear = true;
-
-		const clearColor = this._renderer.getClearColor().clone();
-
-		this._renderer.clear(true, true, true);
-
-		this._renderer.setClearColor(new THREE.Color(0xffffff), 1.0);
-		this._renderer.clearTarget(this._pickingRenderTarget, true, true, true);
+		this._renderer.autoClear = true;		
+				
 		this._renderer.render(this._pickingScene, this._camera, this._pickingRenderTarget);
-		this._renderer.context.finish();
-
-
-		this._renderer.setClearColor(clearColor, 0.0);
-
+		this._renderer.context.finish();	
 
 		this._rotateCubes();
 
 		this._renderer.render(this._scene, this._camera);
-
 	}
 
 	pick() {
@@ -149,9 +144,15 @@ class App {
 			this._pixelBuffer
 		);
 
-		console.log(this._pixelBuffer)
-		// interpret the pixel as an ID
-		// console.log(this._pixelBuffer);
+        const id = (this._pixelBuffer[ 0 ] << 16) | (this._pixelBuffer[ 1 ] << 8) | (this._pixelBuffer[ 2 ]);
+        
+        const selectedObject = this._cubes[id];
+        
+        if (selectedObject) {
+            this._selectedObject = selectedObject;            
+        } else {
+            this._selectedObject = null;
+        }
 	}
 }
 
