@@ -1,5 +1,5 @@
 {
-  "name": "color-picker",  
+  "name": "color-picker",
   "version": "0.1.0",
   "devDependencies": {
     "css-loader": "^0.26.1",
